@@ -7,6 +7,17 @@ import { Inter as FontSans, Old_Standard_TT as FontSerif } from "next/font/googl
 import { cn } from "@/lib/utils";
 import Providers from './Providers';
 
+//solana wallet connect functions
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import {
+    ConnectionProvider,
+    WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { clusterApiUrl } from "@solana/web3.js";
+import { useMemo } from "react";
+
 const fontSans = FontSans({
   subsets: ["latin"],
   variable: "--font-sans",
