@@ -6,6 +6,7 @@ import NavBar from './components/Navbar';
 import { Inter as FontSans, Old_Standard_TT as FontSerif } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Providers from './Providers';
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 //solana wallet connect functions
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={fontSerif.variable}>
       <body className={cn("min-h-screen bg-background font-serif antialiased")}>
+      <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
         <Providers>
           <ThemeProvider>
             <NavBar />
@@ -42,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </ThemeProvider>
         </Providers>
+      </GoogleOAuthProvider>
       </body>
     </html>
   );

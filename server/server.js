@@ -5,6 +5,9 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require("axios");
+const passport = require("passport");
+const session = require("express-session");
+const User = require('./models/User');
 
 const connectMongo = require("../src/lib/db.js");
 
@@ -45,21 +48,107 @@ const {
 } = require("./controllers/sizeController.js");
 const { createNFT, getAllNFTs } = require("./controllers/nftController.js");
 const { createListing } = require("./controllers/listingController.js");
+const { OAuth2Client } = require('google-auth-library');
+const jwt = require('jsonwebtoken');
 
 // Load environment variables from .env file
 dotenv.config();
 
+console.log('Environment variables loaded:', {
+  mongodbUri: !!process.env.MONGODB_URI,
+  googleClientId: !!process.env.GOOGLE_CLIENT_ID,
+  jwtSecret: !!process.env.JWT_SECRET,
+  clientUrl: process.env.CLIENT_URL
+});
+
 const server = express();
 const router = express.Router();
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-server.use(cors());
+server.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 server.use(express.json());
 server.use(bodyParser.urlencoded({ extended: true }));
 server.use(router);
 
 // MongoDB connection
 
-connectMongo();
+connectMongo().then(() => {
+  console.log('MongoDB connected successfully');
+}).catch(err => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Google OAuth route
+router.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    
+    if (!credential) {
+      return res.status(400).json({ error: "No credential provided" });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(400).json({ error: "Invalid token" });
+    }
+
+    let user = await User.findOne({ email: payload.email });
+    if (!user) {
+      try {
+        user = await User.create({
+          email: payload.email,
+          username: payload.email?.split('@')[0],
+          name: payload.name,
+          profilePicture: payload.picture,
+          googleId: payload.sub,
+          role: 'designer',
+          password: Math.random().toString(36).slice(-8) 
+        });
+        console.log("Created new user:", user.email);
+      } catch (createError) {
+        console.error("Error creating user:", createError);
+        return res.status(500).json({ error: "Failed to create user", details: createError.message });
+      }
+    }
+    try {
+      const token = jwt.sign(
+        { id: user._id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      return res.status(200).json({
+        success: true,
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          profilePicture: user.profilePicture
+        }
+      });
+    } catch (tokenError) {
+      return res.status(500).json({ error: "Failed to generate token", details: tokenError.message });
+    }
+  } catch (error) {
+    return res.status(500).json({ 
+      error: "Authentication failed", 
+      details: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
 // USERS
 
 // User registration route

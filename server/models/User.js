@@ -23,6 +23,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  googleId: {
+    type: String,
+    sparse: true
+  }
 });
 
 module.exports = mongoose.model('User', userSchema);

@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -27,6 +28,31 @@ const Login = () => {
       }
     } catch (err) {
       setError("Login failed. Please try again.");
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:4000/api/auth/google",
+        {
+          credential: credentialResponse.credential,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+        
+      if (response.data.success) {
+        localStorage.setItem("token", response.data.token);
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Google login error:", error);
+      setError("Google login failed. Please try again.");
     }
   };
 
@@ -79,12 +105,23 @@ const Login = () => {
             Login
           </button>
         </form>
+
+        <div className="mt-4">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError("Google login failed")}
+            useOneTap
+          />
+        </div>
+        <p className="mt-4 text-center text-black dark:text-white">
+        Don't have an account?{" "}        
         <Link
           href="/register"
           className="text-blue-500 dark:text-blue-300 hover:underline"
         >
           Register here
         </Link>
+        </p>
       </div>
     </div>
   );
